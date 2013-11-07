@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from numpy import *
 from math  import *
-from Bracket import bracket
+from Bracket import Bracketmethod
 
-class Goldsec:
+class Goldsec(Bracketmethod):
     TINY = 1.0e-12
     def __init__(self, maxit, eps, func):
         self.MAXIT = maxit
@@ -11,15 +11,12 @@ class Goldsec:
         self.func  = func
         self.df    = lambda x : self.dfunc(x)
 
-    def bracket(self, a, b):
-        (self.a, self.b) = bracket(a, b, self.df)
-
     def dfunc(self, x):
         return (self.func(x+Goldsec.TINY) - self.func(x)) / Goldsec.TINY
 
     def minimize(self):
-        x1 = self.a
-        x3 = self.b
+        x1 = self.ax
+        x3 = self.bx
         GOLD = (1.0 + sqrt(5.0)) / 2.0
         x2 = (1.0 * x1 + GOLD * x3) / (1.0 + GOLD)
         for it in range(self.MAXIT):
@@ -30,7 +27,6 @@ class Goldsec:
                 break
 
             x4  = x1 + (x3 - x2)
-            print('[%03d] %f %f %f %f' % (it+1, x1, x2, x3, x4))
             f2 = self.func(x2)
             f4 = self.func(x4)
             if x2 < x4:
@@ -51,7 +47,7 @@ class Goldsec:
         return self.xmin
 
 if __name__=='__main__':
-    f = lambda x : (x - 2) ** 2
+    f = lambda x : (x - 2) * (x- 11)
     gc = Goldsec(100, 1.0e-8, f)
-    gc.bracket(00.0, 1.0)
+    gc.bracket(0.0, 1.0)
     gc.minimize()

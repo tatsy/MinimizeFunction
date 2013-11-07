@@ -1,74 +1,83 @@
-# -*- coding: utf-8 -*-
+#-*- coding: utf-8 -*-
+from math import *
 from numpy import *
-from Decker import Decker
+from Bracket import Bracketmethod
 
-class Brent(Decker):
-    # コンストラクタ
-    def __init__(self, maxit, eps, func):
-        Decker.__init__(self, maxit, eps, func)
+class Brent(Bracketmethod):
+    def __init__(self, maxit, tol, func):
+        self.maxit = maxit
+        self.tol   = tol
+        self.func  = func
 
-    # 関数の最小化 (bracketingされている前提)
     def minimize(self):
-        if self.df(self.a) * self.df(self.b) > Brent.TINY:
-            raise Exception, 'Please set initial two points with different sign'
+        CGOLD = 0.3819660
+        ZEPS  = 1.0e-12
+        d = e = 0.0
 
-        c = self.a
-        d = 0.0
-        mflag = True
-        for it in range(self.MAXIT):
-            fa = self.df(self.a)
-            fb = self.df(self.b)
-            fc = self.df(c)
-            if abs(fa - fc) > Brent.TINY and abs(fb - fc) > Brent.TINY:
-                s = self.inv_quad(self.a, self.b, c, self.df)
+        a = self.ax if self.ax < self.cx else self.cx
+        b = self.ax if self.ax > self.cx else self.cx
+        x = w= v = self.bx
+        fw = fv = fx = self.func(x)
+
+        for it in range(self.maxit):
+            xm = 0.5 * (a + b)
+            tol1 = self.tol * abs(x) + ZEPS
+            tol2 = 2.0 * tol1
+            if(abs(x - xm) <= (tol2 - 0.5 * (b - a))):
+                self.fmin = fx
+                self.xmin = x
+                return self.xmin
+
+            if abs(e) > tol1:
+                r = (x - w) * (fx - fv)
+                q = (x - v) * (fx - fw)
+                p = (x - v) * q - (x - w) * r
+                q = 2.0 * (q - r)
+                p = -p if q < 0.0 else p
+                q = abs(q)
+                etemp = e
+                e = d
+                if abs(p) >= abs(0.5 * q * etemp) or p <= q * (a - x) or p >= q * (b - x):
+                    e = a - x if x >= xm else b - x
+                    d = CGOLD * e
+                else:
+                    d = p / q
+                    u = x + d
+                    if u - a < tol2 or b - u < tol2:
+                        d = tol1 * self.sign(xm - x)
             else:
-                s = self.b - (self.b - self.a) / (fb - fa + Brent.TINY) * fb
+                e = a - x if x >= xm else b - x
+                d = CGOLD * e
 
-            cond1 = (s < (3.0 * self.a + self.b) / 4.0 or self.b < s)
-            cond2 = (mflag and abs(s - self.b) >= abs(self.b - c) / 2.0)
-            cond3 = (not mflag and abs(s - self.b) >= abs(c - d) / 2.0)
-            cond4 = (mflag and abs(self.b - c) < Brent.TINY)
-            cond5 = (not mflag and abs(c - d) < Brent.TINY)
-            if cond1 or cond2 or cond3 or cond4 or cond5:
-                s = (self.a + self.b) / 2.0
-                mflag = True
+            u = x + d if abs(d) >= tol1 else x + tol1 * self.sign(d)
+            fu = self.func(u)
+
+            if fu <= fx:
+                if u >= x:
+                    a = x
+                else:
+                    b = x
+
+                (v, w, x) = (w, x, u)
+                (fv, fw, fx) = (fw, fx, fu)
             else:
-                mflag = False
+                if u < x:
+                    a = u
+                else:
+                    b = u
+                if fu <= fw or w == x:
+                    (v, w, fv, fw) = (w, u, fw, fu)
+                elif fu <= fv or v == x or v == w:
+                    (v, fv) = (u, fu)
 
-            fs = self.df(s)
-            d = c
-            c = self.b
-            if fa * fs < 0.0:
-                self.b = s
-            else:
-                self.a = s
+        print('not converge')
+        self.xmin = 0.0
+        self.fmin = 0.0
 
-            if abs(fa) < abs(fb):
-                (self.a, self.b) = (self.b, self.a)
-
-            if abs(self.a - self.b) < Brent.TINY:
-                break
-
-        self.fmin = self.func(self.a)
-        self.xmin = self.a
-        return self.xmin
-
-    # 逆二次補間
-    def inv_quad(self, a, b, c, func):
-        fa = func(a)
-        fb = func(b)
-        fc = func(c)
-        s = 0.0
-        s += (a * fb * fc) / ((fa - fb) * (fa - fc))
-        s += (fa * b * fc) / ((fb - fa) * (fb - fc))
-        s += (fa * fb * c) / ((fc - fa) * (fc - fb))
-        return s
-
-if __name__=='__main__':
-    func = lambda x : (x - 1) * (x - 3)
-    br = Brent(100, 1.0e-8, func)
-    br.bracket(-10.0, 10.0)
-    print('a = %f, b = %f' % (br.a, br.b))
-    br.minimize()
-    print('xmin = %f, fmin = %f' % (br.xmin, br.fmin))
-
+if __name__ == '__main__':
+    f = lambda x : (x - 1.0) * (x - 11.0) * (x - 2) * (x - 4)
+    brent = Brent(100, 3.0e-8, f)
+    brent.bracket(0.0, 1.0)
+    print('%f, %f' % (brent.ax, brent.bx))
+    brent.minimize()
+    print('xmin = %f, fmin = %f' % (brent.xmin, brent.fmin))

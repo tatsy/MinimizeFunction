@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from math import *
 from numpy import *
 
 # 値の入れ替え
